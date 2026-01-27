@@ -1,0 +1,13 @@
+Final Publication Year	Record Count	% of 716
+2025	113	15.782
+2024	104	14.525
+2023	102	14.246
+2020	96	13.408
+2022	90	12.570
+2021	87	12.151
+2019	53	7.402
+2018	46	6.425
+2026	7	0.978
+2017	6	0.838
+
+12 record(s) (1.676%) do not contain data in the field being analyzed
