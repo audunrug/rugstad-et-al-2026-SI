@@ -1,5 +1,6 @@
 # Supporting Information to Rugstad et al. 2026
-[![DOI](https://zenodo.org/badge/1030316476.svg)](https://doi.org/10.5281/zenodo.18001566)
+[![DOI](https://zenodo.org/badge/1143354156.svg)](https://doi.org/10.5281/zenodo.18391448)
+
 
 This repository contains Supporting information, data and code to the manuscript "One One Toolbox, Many Tools: A Practicioner's Guide to Latent Variable Modeling for Common Ecological Questions" (Rugstad et al. 2026),
 
