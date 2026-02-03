@@ -1,8 +1,9 @@
 ---
-title: "Supplementary material 1: Miniature citation review"
+title: "Supporting Information 1: R package usage"
 format: pdf
 editor: visual
 fig-format: png
+date: today
 crossref: 
   fig-title: "Supplementary Figure 1."
   fig-prefix: "Sup. Figure 1."
@@ -12,60 +13,41 @@ crossref:
 bibliography: references.bib
 ---
 
-This vignette contains the code and figures for comparing the citations between. We chose to only compare the citations of the primary cited software papers for the packages `gllvm`, `hmsc` and `boral` with the `vegan` package. The publications in questions are as follows: @dixon2003 for the `vegan` package, @nikuGllvmFastAnalysis2019 for the `gllvm` package, @ovaskainenHowMakeMore2017 for `hmsc` and @huiBoralBayesianOrdination2016 for `boral`. We decided to limit the comparison to these packages, as the other packages that are mentioned in the main manuscript such, are either quite heavily used for univariate analysis (`gllmmTMB,` @bolkerGeneralizedLinearMixed2009), not frequently for model-based ordination (`VGAM`, @yeeaut2025), or have been developed too recently, with to few citations yet, to warrant inclusion, i.e. `ecoCopulas` [@popovic2022].
+This vignette contains the code and figures for comparing the relative usage of the `R` packages `gllvm` [@gllvm_off], `hmsc` [@hmsc_off], `boral` [@boral_off], `ecoCopula` [@ecoCopula_off], `glmmTMB` [@glmmTMB_off] and `VGAM` [@VGAM_off], which are all used for latent variable modelling, with the `vegan` package [@vegan_off], a go-to for classical ordination, based on monthly downloads of each package from the Comprehensive R Archive Network (CRAN).
+
+Note that `glmmTMB` and `VGAM` are packages that are also heavily used for general-purpose GLMM- and GAM modeling in addition to GLLVMs. As such, the numbers for these packages likely are not really very informative with regards to their use for latent variable modelling among ecologists, compared to the other packages.
 
 ### Data setup
 
 ```{r}
 #| output: false
 # load required R packages
+library(cranlogs) # get package download data from cran
 library(dplyr) # data handling
+library(lubridate) # aggregate data by date
 library(ggplot2) # plotting
 ```
 
-We begin by loading the data, all downloaded as citation reports from Web of Science on 01/25-2026.
+We begin by loading the data, from the beginning of 2020 to the end of 2025.
 
 ```{r}
-data_vegan <- read.table("data_S1/vegan_stats.txt", skip = 1)
-data_gllvm <- read.table("data_S1/gllvm_stats.txt", skip = 1) |> 
-  head(7)   # remove end-of-file text line 
-data_hmsc <- read.table("data_S1/hmsc_stats.txt", skip = 1) |> 
-  head(10)  # remove end-of-file text line 
-data_boral <- read.table("data_S1/boral_stats.txt", skip = 1) |> 
-  head(11)  # remove end-of-file text line 
+#| output: false
+#| warning: false
+data_downloads <- cran_downloads(packages=c("vegan","gllvm","Hmsc","boral",
+                                            "ecoCopula","glmmTMB","VGAM"),
+                                 from = "2020-01-01", to = "2025-12-31")
+downloads_monthly <- data_downloads |> 
+  group_by(month=floor_date(date, "month"),package) |> 
+  summarise(count=sum(count))
 ```
 
-We then format the data in one data frame in order to facilitate a comparison of citations of the different packages, both in the context of the total citations per year [@fig-cit]a and as a percentage of total citations per year [@fig-cit]b.
+We also calculate the monthly ratio of downloads for each package:
 
 ```{r}
-for (c in 1:3) {
-  data_gllvm[,c] <- as.numeric(data_gllvm[,c])
-  data_hmsc[,c] <- as.numeric(data_hmsc[,c])
-  data_boral[,c] <- as.numeric(data_boral[,c])
-}
-
-data_vegan$package <- "vegan"
-data_gllvm$package <- "gllvm"
-data_hmsc$package <- "hmsc"
-data_boral$package <- "boral"
-
-data_full <- data_vegan |> # add data together
-  bind_rows(data_gllvm,
-            data_hmsc,
-            data_boral)
-colnames(data_full)[1:3] <- c("year", "citations", "percentage")
-
-# percentage to fraction of all citations accros packages that year
-for (y in unique(data_full$year)) {
-  data_full$percentage[data_full$year==y] <- 
-    data_full$citations[data_full$year==y] / 
-    sum(data_full$citations[data_full$year==y]) *100
-}
-
-# remove 2026 (very few obs) and years before 2015 (only vegan cited)
-data_filt <- data_full |> 
-  filter(year >= 2015 & year != 2026)
+downloads_monthly <- downloads_monthly |> mutate(ratio=count/sum(count))
 ```
+
+## Plotting
 
 We then plot the data in a graph:
 
@@ -75,16 +57,26 @@ We then plot the data in a graph:
 #| label: fig-cit
 #| fig-cap: "yearly citations for the vegan R package (classical ordination tools) and R packages in which model-based ordination tools are central (boral, gllvm and hmsc)."
 #| fig-subcap: 
-#| - "Total number of yearly citations for each package"
-#| - "Percentage of total citations across all packages per year"
+#| - "Total number of monthly citations for each package"
+#| - "Percentage of total citations across all packages per month"
 #| fig-width: 9
 #| fig-height: 4
-ggplot(data_filt) +
-  geom_histogram(aes(x=year, y=citations, fill=package),stat="identity") +
-  theme_classic()
-ggplot(data_filt) +
-  geom_histogram(aes(x=year, y=percentage, fill=package),stat="identity") +
-  theme_classic()
+ggplot(downloads_monthly) + # total downloads/month
+  geom_histogram(aes(x=month, y=count, fill=package),stat="identity") +
+  theme_classic() +
+  labs(color="Package", y="Total monthly downloads", x="Date", 
+       title="Monthly CRAN downloads (2020-2025)") +
+  scale_fill_brewer(palette="Set2") +
+  scale_x_date(date_breaks = "1 year")
+ggplot(downloads_monthly) +  # relative downloads/month
+  geom_histogram(aes(x=month, y=ratio, fill=package),stat="identity") +
+  labs(color="Package", y="Relative monthly downloads", x="Date", 
+       title="Relative number of monthly CRAN downloads (2020-2025)") +
+  scale_fill_brewer(palette="Set2") +
+  theme_classic() +
+  scale_x_date(date_breaks = "1 year")
 ```
+
+\newpage
 
 # References

@@ -4,6 +4,7 @@ library(lattice)
 library(gclus)
 library(corrplot)
 library(ggpubr)
+library(readxl)
 library(mefa)
 
 # allow gllvm to run on all available CPU cores

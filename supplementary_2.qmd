@@ -1,5 +1,5 @@
 ---
-title: "Supplementary material 2"
+title: "Supporting Information 2: Worked examples"
 format: pdf
 editor: visual
 number-sections: true
@@ -15,7 +15,7 @@ bibliography: references.bib
 
 # Introduction
 
-This document contains supplementary material to worked example 1 and worked example 2, from the manuscript "One Toolbox, Many Tools: A Practitioner's Guide to Latent Variable Modeling for Topical Ecological Questions" (Rugstad et al. 2025). It contains the workflow and the code used to produce Figures 4 and 5 in the main manuscript, as well as additional figures and model outputs.
+This document contains supplementary material to worked example 1 and worked example 2, from the main manuscript. It contains the workflow and code used to load and explore data, fit and check all models, produce Figures 4 and 5 in the main manuscript, as well as additional figures and model outputs.
 
 # Setup
 
@@ -163,7 +163,7 @@ table(rowSums(species_sub>0))
 table(colSums(species_sub>0)) # two species with 0 obs!!
 ```
 
-We see that two species have 0 observations, and one species have only 1 observation, in the reduced dataset. We therefore decide to filter these out, in addition to singleton sites, before we fit the concurrent model.
+We see that two species have 0 observations, and one species have only 1 observation, in the reduced dataset. We filter these out, in addition to singleton sites, before we fit the concurrent model.
 
 ```{r}
 species_sub <- species_sub[,colSums(species_sub>0)>1] 
@@ -439,7 +439,7 @@ goodnessOfFit(we_1_uc_mod)
 
 ### Concurrent latent variable model
 
-Below is th model summary of the concurrent ordination model with two concurrent latent variables. we see that the parameter estimates for the effects of soil moisture and soil nitrogen content on latent variable 1 are the only latent variable predictors significant at a 95% confidence level.
+Below is the model summary of the concurrent ordination model with two concurrent latent variables. we see that the parameter estimates for the effects of soil moisture and soil nitrogen content on latent variable 1 are the only latent variable predictors significant at a 95% confidence level.
 
 ```{r}
 # extract the model for visualization
@@ -726,7 +726,7 @@ for (mod in we_2_concurrent) { # for each model
 }
 ```
 
-We also see that the residual variation in the latent variables is very small for all the constrained latent variables. Therefore, we decide to re-fit all the modes with constrained (i..e. fully predictor informed) latent variables.
+We also see that the residual variation in the latent variables is very small for all the constrained latent variables. Therefore, we decide to re-fit all the modes with constrained (i.e. fully predictor informed) latent variables.
 
 ```{r}
 for (mod in we_2_concurrent) { # for each model
@@ -816,7 +816,7 @@ for (mod in we_2_constrained) { # for each model
 }
 ```
 
-We also see that many of th species loadings estimated by the 2-lv model are both severely "blown up" and almost perfectly positively correlated, supporting the notion that the model is poorly converged, and that there is not separate second community gradient that is represented with one latent variable
+We also see that many of the species loadings estimated by the 2-lv model are both severely "blown up" and almost perfectly positively correlated, supporting the notion that the model is poorly converged, and that there is not separate second community gradient that is represented with one latent variable
 
 ```{r}
 plot(getLoadings(we_2_constrained[[2]]))
@@ -824,7 +824,7 @@ plot(getLoadings(we_2_constrained[[2]]))
 
 ## Visualizing results
 
-Her, we include all the code that goes into making Figure 5 in the main manuscript, as well as the model summary (see below), variance partitioning and goodness-of-fit measures from the model. The code for @fig-2-a in particular makes use of some custom code adapted from the `ordiplot()` function in the `gllvm` package in order to scale the site scores, latent variable predictors and species loading in proportion to one another (see comments in code).
+Here, we include all the code that goes into making Figure 5 in the main manuscript, as well as the model summary (see below), variance partitioning and goodness-of-fit measures from the model. The code for @fig-2-a in particular makes use of some custom code adapted from the `ordiplot()` function in the `gllvm` package in order to scale the site scores, latent variable predictors and species loading in proportion to one another (see comments in code).
 
 ```{r}
 we_2_cn_mod <- we_2_constrained[[1]]
@@ -859,7 +859,7 @@ for(i in 1:ncol(choose.lv.coefs)){
     sqrt(sum(choose.lv.coefs[,i]^2))
 }
 
-## Standardize both to unit norm then scale using bothnorms
+## Scale both to unit norm then scale using bothnorms
 scaled_cw_sites <- t(t(choose.lvs) / sqrt(colSums(choose.lvs^2)) * 
                        (bothnorms^0.5)) 
 scaled_cw_species <- choose.lv.coefs
@@ -868,7 +868,7 @@ for(i in 1:ncol(scaled_cw_species)){
     sqrt(sum(choose.lv.coefs[,i]^2)) * (bothnorms[i]^(0.5)) 
 }
 
-# Standardize species coefs too
+# Scale species coefs too
 coef_scaled <- (coefs[,1] / sqrt(colSums(choose.lvs^2))) * (bothnorms^(0.5)) 
 
 # extract species loadings for species with highest and lowest loadings
@@ -915,7 +915,6 @@ ggplot() +
         axis.line.x = element_line(),
         legend.position = "bottom") +
   labs(y="", x="Latent variable", color="Method", title="a") +
-  #xlim(-7,1.8) +
   scale_color_brewer(labels = c("Natural", "Planted-natural", 
                                 "Reference","Seeded"), 
                      type="qual", palette = "Set1") +
