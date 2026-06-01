@@ -42,6 +42,8 @@ We also include a line of code that allows the `gllvm` package (through the unde
 TMB::openmp(parallel::detectCores()-1, autopar = TRUE, DLL = "gllvm")
 ```
 
+One important note is that all code here is run using `gllvm` version 2.0.10. If users encounter errors that prevents the code from running, it will likely be due to version mismatch. Note also that the `gllvm` model fitting function will sometimes give warnings which *contain* errors from parts of the model fitting. This might happen e.g. when one of several model fitting iterations fail to converge to a stable solution, and does not need to mean that the model fitting as a whole (across multiple iterations) was unsuccsessful.
+
 # Worked example 1
 
 ## Preparing data
@@ -189,7 +191,7 @@ table(colSums(species_sub>0))
 #| fig-width: 7
 #| fig-height: 6
 corrplot::corrplot(cor(env_sub[,-c(1,2)]), type = "lower", 
-                   method = "pie", diag= FALSE)
+                   method = "square", diag= FALSE)
 ```
 
 ## Model fitting
@@ -206,6 +208,7 @@ Below is the code to fit the model with unconstrained latent variables. We fit m
 #| output: false
 we_1_unconstrained <- list() # make list for model object
 for (n_lv in 1:6) { # run up to 6 LVs
+  print(paste("Fitting model with:", n_lv, "latent variables"))
   we_1_unconstrained[[n_lv]] <- gllvm( 
   y = species_f,
   family = "tweedie", # response distribution family
@@ -228,6 +231,7 @@ Below is the code for fitting the concurrent latent variable models with up to t
 #| output: false
 we_1_concurrent <- list() # make list for model object
 for (n_lv in 1:3) { # run up to 3 LVs
+  print(paste("Fitting model with:", n_lv, "latent variables"))
   we_1_concurrent[[n_lv]] <- gllvm(
     y = species_sub,
     X = env_sub,
@@ -250,7 +254,7 @@ for (n_lv in 1:3) { # run up to 3 LVs
 
 ### Unconstrained latent variable model {#sec-1-uc}
 
-@tbl-1-aic1 shows the Aikake Information Criteria (AIC) for the resulting unconstrained latent variable models, while @fig-1-diag1 and @fig-1-diag2 show the diagnostic plots, obtained using the `plot()` function on the `gllvm` model object. We see tthat there is an AIC minimum for the model with 5 latent variables.
+@tbl-1-aic1 shows the Aikake Information Criteria (AIC) for the resulting unconstrained latent variable models, while @fig-1-diag1 and @fig-1-diag2 show the diagnostic plots, obtained using the `plot()` function on the `gllvm` model object. We see that there is an AIC minimum for the model with 5 latent variables.
 
 ```{r}
 #| echo: true
@@ -276,7 +280,7 @@ As seen in the top row in both @fig-1-diag1 and @fig-1-diag2, there is a slight 
 ```{r}
 #| echo: true
 #| label: fig-1-diag1
-#| fig-cap: "Diagnostic plots of normal randomized quantile residuals for the unconstrained models in worked example 1. Colors represent different species in the dataset. Left column = 1 latent variable, middle = 2 and right = 3."
+#| fig-cap: "Diagnostic plots of normal randomized quantile residuals for the unconstrained models in worked example 1. Left column = 1 latent variable, middle = 2 and right = 3."
 #| fig-width: 7
 #| fig-height: 9
 
@@ -290,7 +294,7 @@ for (mod in we_1_unconstrained[1:3]) { # first 3 models
 ```{r}
 #| echo: true
 #| label: fig-1-diag2
-#| fig-cap: "Diagnostic plots of normal randomized quantile residuals for the unconstrained models in worked example 1. Colors represent different species in the dataset. Left column = 4 latent variable, middle = 5 and right = 6."
+#| fig-cap: "Diagnostic plots of normal randomized quantile residuals for the unconstrained models in worked example 1. Left column = 4 latent variable, middle = 5 and right = 6."
 #| fig-width: 7
 #| fig-height: 9
 
@@ -315,6 +319,10 @@ for (mod in we_1_unconstrained) { # for each model
        main=mod$num.lv)
 }
 ```
+
+We see that some of the iterations produce warnings from the `L-BFGS-B` optimiser. However, (explain
+
+(Write an e-mail to Jenni about the optimizer settings that aren't carried over to the R side)
 
 Looking at the sign of the diagonal of the covariance matrix for the parameter estimators, we see, however, that several of the models give negative values, which indicates poor model fit, even after running for several iterations. Based on this, we decide to stick with the model with three latent variables for further analysis, as it does not have any negative values, even though the 5 latent variable model had lower AIC..
 
@@ -352,7 +360,7 @@ knitr::kable(ic_mods |> round(1)) # render
 ```{r}
 #| echo: true
 #| label: fig-cc2
-#| fig-cap: "Diagnostic plots of normal randomized quantile residuals for the unconstrained models in worked example 1. Colors represent different species in the dataset. Left column = 1 latent variable, middle = 2 and right = 3."
+#| fig-cap: "Diagnostic plots of normal randomized quantile residuals for the unconstrained models in worked example 1. Left column = 1 latent variable, middle = 2 and right = 3."
 #| fig-width: 7
 #| fig-height: 9
 
@@ -434,7 +442,7 @@ title(main = "b", adj = 0)
 Looking at the built-in goodness-of-fit measures of the `gllvm` package, we see that the correlation between the predicted species observations and the acutual data is very high (`0.92`), and various error terms, such as root mean squared error (RMSE) and mean absolute error (MAE), are quite low, indicating that our model is a good fit to our original response data.
 
 ```{r}
-goodnessOfFit(we_1_uc_mod)
+goodnessOfFit(object=we_1_uc_mod)
 ```
 
 ### Concurrent latent variable model
@@ -457,7 +465,6 @@ summary(we_1_cc_mod)
 #| fig-height: 8
 ### Concurrent ordination diagram ####
 col_list <- c(rep("darkblue", 5), "red", rep(rep("darkblue", 11)))
-we_1_cc_mod$params$theta
 a <- ordiplot(we_1_cc_mod, biplot=T, symbols=T, rotate=T,
               spp.colors =  col_list, main="", ylim=c(-2,3), xlim=c(-5,3))
 title(main = "c", adj = 0)
@@ -481,7 +488,7 @@ axis(2,at=1:3,labels=FALSE)
 
 ```
 
-We can also look at the variance partitioning of the concurrent latent variable model [@fig-1-vp]. Here, we see that the linear predictor variance of *Ligustrum lucidum* is explained predominantly by the soil moisture content. We also note that a considerable amount of the variance for some species (26% in total) is due to residual (i.e. unexplained) variance in latent variable 2 (CLV2), indicating that their may be important additional environmental or biotic factors that were not included in the study that are important for shaping the species community. And as @fig-1-vp shows, this residual variation is resonsible for significant negative correlation between L.luc and the other study species.
+We can also look at the variance partitioning of the concurrent latent variable model [@fig-1-vp]. Here, we see that the linear predictor variance of *Ligustrum lucidum* is explained predominantly by the soil moisture content. We also note that a considerable amount of the variance for some species (26% in total) is due to residual (i.e. unexplained) variance in latent variable 2 (CLV2), indicating that their may be important additional environmental or biotic factors that were not included in the study that are important for shaping the species community. And as @fig-1-vp shows, this residual variation is responsible for significant negative correlation between L.luc and the other study species.
 
 ```{r}
 #| label: fig-1-vp
@@ -583,7 +590,7 @@ env_sub$method <- env$method
 env_sub$time <- env$years_since_n # rename the column to be shorter
 ```
 
-Looking at the corrogram for the continuous predictors [@fig-2-cor], we see no significant co-linearity, except for the relationship between canopy cover and time since restoration, which is likely due to the fact that all sites in the reference category are coded with a high "years since restotation" value of 40. And since we are not planning on using this value in our model, see below, it will not be a problem for us.
+Looking at the corrogram for the continuous predictors [@fig-2-cor], we see no significant co-linearity, except for the relationship between canopy cover and time since restoration, which is likely due to the fact that all sites in the reference category are coded with a high "years since restoration" value of 40. And since we are not planning on using this value in our model, see below, it will not be a problem for us.
 
 ```{r}
 #| echo: true
@@ -597,17 +604,23 @@ env_sub |>
          loi, grain_size_stand_f, time) |> 
   cor() |> 
   corrplot::corrplot(type = "lower", 
-                   method = "pie", diag= FALSE)
+                   method = "square", diag= FALSE)
 ```
 
-Indeed, looking only at the correlation for the non-reference sites reveals that both the correlations between canopy cover and distance to vegetation with year disappears.
+Indeed, looking only at the correlation for the non-reference sites reveals that both the strong correlations between canopy cover and distance to vegetation with year disappears.
 
 ```{r}
+#| label: fig-2-cor2
+#| fig-cap: "Correlation plot for the observed environmental predictors in worked example 1, for the subset of non-reference sites."
+#| fig-width: 7
+#| fig-height: 6
 env_sub |> 
   filter(method != "ref") |> 
   select(dist_int_veg, caco, slope, 
          loi, grain_size_stand_f, time) |> 
-  cor()
+  cor() |> 
+  corrplot::corrplot(type = "lower", 
+                   method = "square", diag= FALSE)
 ```
 
 In order to scale the variable `years_since_n` (time since restoration intervention), we have to do some additional tweaking. Since the reference sites are coded in the data with a value of 40, and we are not including reference sites in our interaction effect, we scale the variable using only the non-reference sites:
@@ -634,7 +647,7 @@ X$gf <- env_sub$gf
 
 ## Model fitting
 
-We try to fit a concurrent model using the ordered beta distribution. To do this, we have to convert our species data into fractions
+We try to fit a concurrent model using the ordered beta distribution. To do this, we have to convert our species data into fractions on the 0-1 interval:
 
 ```{r concurrent-fit}
 Y <- Y/100
@@ -646,7 +659,7 @@ We also order our species columns from most to least common, in order to help wi
 Y <- Y[,names(sort(colSums(Y), decreasing =T))] # sort by most common species first
 ```
 
-We then attempt to fit the model with 1 to 3 latent variables. Because they took some time to fit with each iteration, we kept the `n.init = 2` for all runs.
+We then attempt to fit the model with 1 to 3 latent variables. Because they took some time to fit with each iteration, we kept `n.init = 2` for all runs. Although we acknowledge that, given more patience by the authors, the model fit could probably be improved through more iterations.
 
 ```{r fit-3}
 #| eval: true
@@ -696,7 +709,7 @@ knitr::kable(ic_mods |> round(1)) # render
 ```{r}
 #| output: true
 #| label: fig-2-diag1
-#| fig-cap: "Diagnostic plots of normal randomized quantile residuals for the concurrent models in worked example 2. Colors represent different species in the dataset. Left column = 1 latent variable, middle = 2 and right = 3."
+#| fig-cap: "Diagnostic plots of normal randomized quantile residuals for the concurrent models in worked example 2. Left column = 1 latent variable, middle = 2 and right = 3."
 #| fig-width: 7
 #| fig-height: 9
 layout(mat = matrix(1:15, nrow = 5, ncol = 3))
@@ -783,7 +796,7 @@ knitr::kable(ic_mods |> round(1)) # render
 ```{r}
 #| output: false
 #| label: fig-2-diag2
-#| fig-cap: "Diagnostic plots of normal randomized quantile residuals for the concurrent models in worked example 2. Colors represent different species in the dataset. Left column = 1 latent variable, middle = 2 and right = 3."
+#| fig-cap: "Diagnostic plots of normal randomized quantile residuals for the concurrent models in worked example 2. Left column = 1 latent variable, middle = 2 and right = 3."
 #| fig-width: 7
 #| fig-height: 9
 layout(mat = matrix(1:15, nrow = 5, ncol = 3))
