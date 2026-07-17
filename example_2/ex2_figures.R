@@ -87,38 +87,29 @@ a <- ggplot() +
   ylim(-.45,.45)
 
 
-## Plot 2 ##### extract site and random effects
-site_effects <- we_2_cn_mod$params$row.params.random
-region_effects <- we_2_cn_mod$params$B
-region_species_effects <- as.data.frame(we_2_cn_mod$params$Br)
+## Plot 2 ####
+# variance partitioning
+vp_we_2_cn_mod <- varPartitioning.gllvm(we_2_cn_mod,
+                                        group=c(2,2,2,
+                                                1,1,1,
+                                                3,3,3,
+                                                4,4,4,4,4,
+                                                5),
+                                        groupnames=c("Treatment",
+                                                     "Site",
+                                                     "Treatment X time",
+                                                     "Other predictors",
+                                                     "Plot"))
 
-# add intercepts to species random effects
-region_species_effects[2,] <- region_species_effects[2,] + region_effects[1]
-region_species_effects[3,] <- region_species_effects[3,] + region_effects[2]
-region_species_effects$region <- rownames(region_species_effects)
-
-# pivot for ggplot
-region_species_effects <- region_species_effects |> 
-  pivot_longer(cols=1:98)
+# sort by response to treatment
+vp_we_2_cn_mod$PropExplainedVarSp <- vp_we_2_cn_mod$PropExplainedVarSp[order(vp_we_2_cn_mod$PropExplainedVarSp[,1],
+                                                                             decreasing = T),]
 
 # plot
-b <- ggplot() +
-  geom_boxplot(aes(x="Site R.E.", y=site_effects, color="sites")) +
-  geom_jitter(aes(x="Site R.E.", y=site_effects, color="sites"), 
-              position=position_jitter(0.15)) +
-  geom_boxplot(aes(x="Species R.E. (+ intercept)", 
-                   y=region_species_effects$value, 
-                   color=region_species_effects$region),
-               outlier.shape = NA) +
-  geom_jitter(aes(x="Species R.E. (+ intercept)", 
-                  y=region_species_effects$value, 
-                  color=region_species_effects$region),
-              alpha=0.7, width=0.2) +
-  labs(color="Random effect",x="", y="value", title="b") +
-  theme_classic() +
-  scale_color_brewer(palette="Set2",
-                     labels = c("Region 1", "Region 2", "Region 3", "Sites"))
-
+b <- ggplotify::as.ggplot(~plot(vp_we_2_cn_mod, args.legend = list(cex=0.9),
+     main="b",
+     cex.names=0.0001,
+     col=hcl.colors(5, "Roma"), las=2))
 
 
 #### prediction ####
@@ -137,21 +128,25 @@ lv_scores[X$method=="pn",] = lv_scores[X$method=="pn",] + pars[5]*add_t
 lv_scores[X$method=="seed",] = lv_scores[X$method=="seed",] + pars[6]*add_t
 
 X$gf <- env_pred$gf # needed for prediction of baseline
+
+#debugonce(predict.gllvm)
 pred_scores_0 <- predict.gllvm(newX=X, object = we_2_cn_mod, 
                                type = "response")
 pred_scores_20 <- predict.gllvm(newX=env_pred, object = we_2_cn_mod, 
                                 type = "response")
+
 diffs <- as.data.frame(pred_scores_20-pred_scores_0) # calculate diff
+colnames(diffs) <- colnames(Y)
 diffs$method <- env_pred$method
 diffs <- diffs |> filter(method != "ref") # remove reference sites
 
 #### Plot 3 ####
 lv_scores <- scaled_cw_sites
 pars <- coef_scaled
-
-lv_scores[env_mat$method=="nat",] = lv_scores[env_mat$method=="nat",] + pars[4]*add_t
-lv_scores[env_mat$method=="pn",] = lv_scores[env_mat$method=="pn",] + pars[5]*add_t
-lv_scores[env_mat$method=="seed",] = lv_scores[env_mat$method=="seed",] + pars[6]*add_t
+# 
+lv_scores[X$method=="nat",] <- lv_scores[X$method=="nat",] + pars[4]*add_t
+lv_scores[X$method=="pn",] <- lv_scores[X$method=="pn",] + pars[5]*add_t
+lv_scores[X$method=="seed",] <- lv_scores[X$method=="seed",] + pars[6]*add_t
 
 # predict LV scores plot
 c <- ggplot() + 
@@ -199,4 +194,5 @@ d <- annotate_figure(d, top = text_grob("d", size = 14, hjust=18),
 
 full_figure <- ggarrange(a,b,c,d)
 
+# will need to be adjusted further in vector graphics program (I use Inkscape)
 ggsave("figures/figure_5.pdf", width=12, height=9, units = "in", device="pdf")

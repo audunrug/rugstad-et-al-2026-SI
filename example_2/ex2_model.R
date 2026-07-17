@@ -4,7 +4,7 @@ library(vegan)
 TMB::openmp(parallel::detectCores()-1, autopar = TRUE, DLL = "gllvm")
 set.seed(1)
 
-#### pre-processing
+#### pre-processing ####
 # load species data
 load("example_2/data/species.rda")
 species <- species_sub1 # overwrite old species data frame
@@ -21,7 +21,7 @@ for (s in unique(env.var_sub1$site)) {
 env$gf <- droplevels(env$gf, "ref")
 env$grain_size_stand_f <- as.numeric(env$grain_size_stand_f)
 
-## Data filtering ####
+#### Data filtering ####
 Y <- species[,colSums(species > 0)>3]
 
 # environmental data
@@ -42,7 +42,9 @@ X <- as.data.frame(X[,-c(1,2,3,4,10)]) # remove time x reference interaction
 
 colnames(X)[6:8] <- c("natXtime", "pnXtime", "seedXtime")
 X$method <- factor(env_sub$method, levels=c("ref", "nat", "pn", "seed"))
-X$gf <- env_sub$gf
+X$gf <- env$gf
+X$site <- env$site # do I need this?
+
 
 Y <- Y/100
 Y <- Y[,names(sort(colSums(Y), decreasing =T))] # sort by most common species first
@@ -51,15 +53,17 @@ Y <- Y[,names(sort(colSums(Y), decreasing =T))] # sort by most common species fi
 we_2_cn_mod <- gllvm(
   y = Y,
   X = X,
-  studyDesign = env, # study design matrix (for row.effects)
+  studyDesign = X, # study design matrix (for row.effects)
   num.RR = 1, # constrained latent variables
   family = "orderedBeta", # ordered beta response distribution
+  method="EVA",
+  link = "logit",
   formula = ~ (1|gf), # region as species-specific random effect
   row.eff = ~ (1|site), # site as community-wide random effect
-  method = "EVA", # extended variational approximation method
   lv.formula = ~ method + natXtime + pnXtime + # predictors
     seedXtime + dist_int_veg + caco + slope + loi + grain_size_stand_f,
   disp.formula = rep(1, ncol(Y)), # same dispersion param for all species
-  n.init = 2, # number of starting iterations (fewer due to slow fitting)
-  seed = 1 # seed
+  n.init = 4, # number of starting iterations (fewer due to slow fitting)
+  seed = 1, # seed
+  trace=T
 )
