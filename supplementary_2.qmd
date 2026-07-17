@@ -42,7 +42,7 @@ We also include a line of code that allows the `gllvm` package (through the unde
 TMB::openmp(parallel::detectCores()-1, autopar = TRUE, DLL = "gllvm")
 ```
 
-One important note is that all code here is run using `gllvm` version 2.0.10. If users encounter errors that prevents the code from running, it will likely be due to version mismatch. Note also that the `gllvm` model fitting function will sometimes give warnings which *contain* errors from parts of the model fitting. This might happen e.g. when one of several model fitting iterations fail to converge to a stable solution, and does not need to mean that the model fitting as a whole (across multiple iterations) was unsuccsessful.
+One important note is that all code here is run using `gllvm` version 2.0.10. If users encounter errors that prevents the code from running, it will likely be due to version mismatch. Note also that the `gllvm` model fitting function will sometimes give warnings which *contain* errors from parts of the model fitting. This might happen e.g. when one of several model fitting iterations fail to converge to a stable solution, and does not need to mean that the model fitting as a whole (across multiple iterations) was unsuccessful.
 
 # Worked example 1
 
@@ -196,7 +196,7 @@ corrplot::corrplot(cor(env_sub[,-c(1,2)]), type = "lower",
 
 ## Model fitting
 
-Below is the code for the fitting of the unconstrained and concurrent GLLVMs. All models ran without giving errors, in less than five minutes. Code for the model fitting of the unconstrained model with one latent variable can also be found in the main text.
+Below is the code for the fitting of the unconstrained and concurrent model-based ordinations. All models ran without giving errors.
 
 ### Unconstrained latent variable models
 
@@ -212,12 +212,13 @@ for (n_lv in 1:6) { # run up to 6 LVs
   we_1_unconstrained[[n_lv]] <- gllvm( 
   y = species_f,
   family = "tweedie", # response distribution family
+  method = "LA", # Laplace approx. for better convergence
   row.eff = "random", # to account for overall abundance in a plot
   num.lv = n_lv, # number of unconstrained LVs
   Power = NULL, # calculate power parameter for Tweedie family
-  n.init = 10, # number of starting iterations (to ensure convergence)
+  n.init = 5, # number of starting iterations (to ensure convergence)
   seed = 1, # starting seed (to ensure replicablilty)
-  trace=T
+  trace=F
   ) 
 }
 ```
@@ -275,7 +276,7 @@ rownames(ic_mods) <- paste(as.character(1:length(ic_mods[, 1])), # add row names
 knitr::kable(ic_mods |> round(1)) # render
 ```
 
-As seen in the top row in both @fig-1-diag1 and @fig-1-diag2, there is a slight negative over-representation of negative residuals in all models for high values of the linear predictor. However, we assume it is not large enough to significantly impact the predictions of the model. Otherwise, all the other residual diagnostics plots seem to indicate that the model assumptions hold for our data, for all models.
+As seen in the top row in both @fig-1-diag1 and @fig-1-diag2, there is a slight over-representation of negative residuals in all models for high values of the linear predictor. However, we assume it is not large enough to significantly impact the predictions of the model. Otherwise, all the other residual diagnostics plots seem to indicate that the model assumptions hold for our data, for all models.
 
 ```{r}
 #| echo: true
@@ -284,7 +285,6 @@ As seen in the top row in both @fig-1-diag1 and @fig-1-diag2, there is a slight 
 #| fig-width: 7
 #| fig-height: 9
 
-# make the points smaller and also no colors
 layout(mat = matrix(1:15, nrow = 5, ncol = 3))
 for (mod in we_1_unconstrained[1:3]) { # first 3 models
     plot(mod, var.colors=1)
@@ -304,7 +304,7 @@ for (mod in we_1_unconstrained[4:6]) { # last 3 models
 }
 ```
 
-As a supplement to the diagnostic plots, we also look at the gradients of the parameter estimators (@fig-gr1) and the sign of the estimator variances, in order to get an indication of whether the model has converged stably. Here, we see that the gradients values are all very close to 0, which indicates stable convergence for all our models.
+As a supplement to the diagnostic plots, we also look at the gradients of the parameter estimators (@fig-gr1) and the sign of the estimator variances, in order to get an indication of whether the model has converged stably. Here, we see that the gradient values are all very close to 0, which indicates stable convergence for all our models.
 
 ```{r}
 #| echo: true
@@ -320,11 +320,9 @@ for (mod in we_1_unconstrained) { # for each model
 }
 ```
 
-We see that some of the iterations produce warnings from the `L-BFGS-B` optimiser. However, (explain
+We see that some of the iterations produce warnings from the `L-BFGS-B` optimiser. However, this does not necessarily mean that there is any issues with the final fitted model.
 
-(Write an e-mail to Jenni about the optimizer settings that aren't carried over to the R side)
-
-Looking at the sign of the diagonal of the covariance matrix for the parameter estimators, we see, however, that several of the models give negative values, which indicates poor model fit, even after running for several iterations. Based on this, we decide to stick with the model with three latent variables for further analysis, as it does not have any negative values, even though the 5 latent variable model had lower AIC..
+Still, looking at the sign of the diagonal of the covariance matrix for the parameter estimators, we do see that several of the models give negative values, which indicates poor model fit, even after running for several iterations. Based on this, we decide to stick with the model with three latent variables for further analysis, as it does not have any negative values, even though the 5 latent variable model had lower AIC.
 
 ```{r}
 #| echo: true
@@ -398,7 +396,9 @@ for (mod in we_1_concurrent) { # for each model
 
 ### Unconstrained latent variable model
 
-Here, we include all the code to make the figures that go into Figure 4 (see also the script `example_1/ex1_figures.R`), in addition to the model summaries of the two models (i.e. the unconstrained and concurrent), the species-specific coefficients for all the environmental predictors (@fig-1-coef1), variance partitioning, and goodness-of-fit measures of the two models.Unconstrained latent variable model
+Here, we include all the code to make the figures that go into Figure 4 (see also the script `example_1/ex1_figures.R`), in addition to the model summaries of the two models (i.e. the unconstrained and concurrent), the species-specific coefficients for all the environmental predictors (@fig-1-coef1), variance partitioning, and goodness-of-fit measures of the two models.
+
+Summary for the unconstrained latent variable model:
 
 ```{r}
 we_1_uc_mod <- we_1_unconstrained[[3]]
@@ -585,7 +585,8 @@ Next, we scale our environmental predictors
 ```{r}
 env_sub <- env |> 
   select(dist_int_veg, caco, slope, loi, grain_size_stand_f) |> 
-  scale() |> as.data.frame()
+  scale() |> 
+  as.data.frame()
 env_sub$method <- env$method
 env_sub$time <- env$years_since_n # rename the column to be shorter
 ```
@@ -669,12 +670,13 @@ for (n_lv in 1:3) {  # run up to 3 LVs
   we_2_concurrent[[n_lv]] <- gllvm(
     y = Y,
     X = X,
-    studyDesign = env, # study design matrix (for row.effects)
+    method="EVA", # Extended variational approximation
+    link="logit", # logit link
+    studyDesign = env, # study design matrix (for row.eff)
     num.lv.c = n_lv, # 1 concurrent latent variable
     family = "orderedBeta", # ordered beta response distribution
     formula = ~ (1|gf), # region as species-specific random effect
     row.eff = ~ (1|site), # site as community-wide random effect
-    method = "EVA", # extended variational approximation method
     lv.formula = ~ method + natXtime + pnXtime + # predictors
       seedXtime + dist_int_veg + caco + slope + loi + grain_size_stand_f,
     disp.formula = rep(1, ncol(Y)), # same dispersion param for all species
@@ -757,10 +759,11 @@ for (n_lv in 1:3) {  # run up to 3 LVs
     X = X,
     studyDesign = env, # study design matrix (for row.effects)
     num.RR = n_lv, # constrained latent variables
+    method="EVA", # Extended variational approximation
+    link="logit", # logit link
     family = "orderedBeta", # ordered beta response distribution
     formula = ~ (1|gf), # region as species-specific random effect
     row.eff = ~ (1|site), # site as community-wide random effect
-    method = "EVA", # extended variational approximation method
     lv.formula = ~ method + natXtime + pnXtime + # predictors
       seedXtime + dist_int_veg + caco + slope + loi + grain_size_stand_f,
     disp.formula = rep(1, ncol(Y)), # same dispersion param for all species
@@ -774,7 +777,7 @@ for (n_lv in 1:3) {  # run up to 3 LVs
 
 Re-fitting the models does however not seem to fully fix the convergence issues with the more latent variable-heavy models, as seen in @fig-2-gr2 and the code output below. While the gradients of the 3-lv model look better, it has a greater number of negative variances, and the opposite is true for the 2 lv model.
 
-We therefore decide to process with the 1-latent variable model for the visualisations and analysis.
+We therefore decide to proceed with the 1-latent variable model for the visualisations and analysis.
 
 ```{r}
 #| echo: false
@@ -1087,12 +1090,23 @@ We can also visualize the variance partitioning [@fig-2-vp], and note that the r
 
 ```{r}
 #| label: fig-2-vp
-#| fig-cap: "Variance partitiining of the latent variable model in worked example 2"
+#| fig-cap: "Variance partitioning of the latent variable model in worked example 2"
 #| fig-width: 8
 #| fig-height: 7
-vp_we_2_cn_mod <- varPartitioning.gllvm(we_2_cn_mod)
-plot(vp_we_2_cn_mod, args.legend = list(cex=0.7),
-     col=hcl.colors(5, "Roma"), las=2)
+vp_we_2_cn_mod <- varPartitioning.gllvm(we_2_cn_mod,
+                                        group=rev(c(5,rep(4,5),rep(3,3),rep(2,3),rep(1,3))),
+                                        groupnames=c("Site RE (species-specific)", 
+                                                     "Rest. treatment",
+                                                     "Rest. treatment X time",
+                                                     "Other environmental predictors",
+                                                     "Plot RE"
+                                                     ))
+
+
+plot(vp_we_2_cn_mod, args.legend = list(cex=0.9),
+     main="b",
+     col=hcl.colors(5, "Roma"), las=2,
+     )
 ```
 
 # References
