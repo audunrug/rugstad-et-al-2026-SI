@@ -937,6 +937,147 @@ ggplot() +
   ylim(-.45,.45)
 ```
 
+Below is the code for predicting the site scores after 20 years:
+
+```{r}
+env_pred <- X
+add_t <- 20/(sqrt(var(env$years_since_n[env$years_since_n<40])))
+env_pred$natXtime <- ifelse(X$natXtime>0, X$natXtime+add_t, 0)
+env_pred$pnXtime <- ifelse(X$pnXtime>0, X$pnXtime+add_t, 0) 
+env_pred$seedXtime <- ifelse(X$seedXtime>0, X$seedXtime+add_t, 0)
+env_pred$gf <- env$gf # needed for prediction
+env_pred$site <- env$site
+```
+
+```{r}
+#| echo: true
+#| eval: true
+#| label: fig-2-c
+#| fig-cap: "One-dimenstion ordination plot of the constrained ordination, with 20 years added to the time predictor. Equivalent to Figure 5c in the main manuscript."
+#| fig-width: 7
+#| fig-height: 4
+lv_scores <- scaled_cw_sites
+pars <- coef_scaled
+
+lv_scores[X$method=="nat",] = lv_scores[X$method=="nat",] + pars[4]*add_t
+lv_scores[X$method=="pn",] = lv_scores[X$method=="pn",] + pars[5]*add_t
+lv_scores[X$method=="seed",] = lv_scores[X$method=="seed",] + pars[6]*add_t
+
+# predict LV scores plot
+ggplot() + 
+  geom_point(aes(x=lv_scores[,1], y=0, color=X$method), 
+             position = position_jitter(w = 0, h = 0.1)) +
+  theme_classic() +
+  theme(axis.line.y = element_blank(), 
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.line.x = element_line(),
+        legend.position = "bottom") +
+  labs(y="", x="Latent variable", color="Method", title = "c") +
+  scale_color_brewer(labels = c("Natural", "Planted-natural", 
+                                "Reference","Seeded"), 
+                     type="qual", palette = "Set1") +
+  ylim(-.2,.2)
+```
+
+We can also use the model to predict the future cover of specific species in the plots, using the code below, and visualising he future predictions for two potential indicator species [@fig-2-d].
+
+```{r}
+pred_scores_0 <- predict.gllvm(object = we_2_cn_mod, 
+                               type = "response")
+pred_scores_20 <- predict.gllvm(newX=env_pred, object = we_2_cn_mod, 
+                                type = "response")
+diffs <- as.data.frame(pred_scores_20-pred_scores_0) # calculate diff
+names(diffs) <- names(Y)
+diffs$method <- env_pred$method
+diffs <- diffs |> filter(method != "ref") # remove reference sites from the data frame
+```
+
+```{r}
+#| echo: true
+#| eval: true
+#| label: fig-2-d
+#| fig-cap: "One-dimenstion ordination plot of the constrained ordination. Equivalent to Figure 5d in the main manuscript."
+#| fig-width: 7
+#| fig-height: 4
+p1 <- ggplot() +
+  geom_density(aes(x=diffs$festuca_rubra, fill = diffs$method, 
+                   color=diffs$method), alpha=0.5) +
+  labs(x="predicted cover change", y="number of plots", 
+       title = "Festuca rubra", fill="Method", color="Method") +
+  scale_fill_manual(labels = c("Natural", "Planted-natural", "Seeded"), 
+                    values = c("#E41A1C", "#377EB8", "#984EA3")) +
+  scale_color_manual(labels=c("Natural", "Planted-natural","Seeded"), 
+                     values = c("#E41A1C", "#377EB8", "#984EA3")) +
+  theme_classic()
+
+p2 <- ggplot() +
+  geom_density(aes(x=diffs$picea_abies, fill = diffs$method, 
+                   color=diffs$method), alpha=0.5) +
+  labs(x="predicted cover change", y="", title = "Picea abies", 
+       fill="Method", color="Method") +
+  scale_fill_manual(labels = c("Natural", "Planted-natural", "Seeded"), 
+                    values = c("#E41A1C", "#377EB8", "#984EA3")) +
+  scale_color_manual(labels=c("Natural", "Planted-natural", "Seeded"), 
+                     values = c("#E41A1C", "#377EB8", "#984EA3")) +
+  theme_classic()
+
+ggarrange(p1,p2, common.legend = T, legend = "bottom")
+```
+
+We can also visualize the variance partitioning [@fig-2-vp], and note that the restoration treatment explain by far the most variance, followed by the species-specific effect of the study site and the community-wide random effect.
+
+```{r}
+#| label: fig-2-vp
+#| fig-cap: "Variance partitioning of the latent variable model in worked example 2"
+#| fig-width: 8
+#| fig-height: 7
+vp_we_2_cn_mod <- varPartitioning.gllvm(we_2_cn_mod,
+                                        group=c(2,2,2,
+                                                1,1,1,
+                                                3,3,3,
+                                                4,4,4,4,4,
+                                                5),
+                                        groupnames=c("Site RE (species-specific)", 
+                                                     "Rest. treatment",
+                                                     "Rest. treatment X time",
+                                                     "Other environmental predictors",
+                                                     "Plot RE"
+                                                     ))
+
+# order by proportion explained by treatment
+vp_we_2_cn_mod$PropExplainedVarSp <- vp_we_2_cn_mod$PropExplainedVarSp[order(vp_we_2_cn_mod$PropExplainedVarSp[,1], decreasing = T),]
+
+plot(vp_we_2_cn_mod, 
+     args.legend = list(cex=0.9,
+                        bg="white",
+                        x=65,
+                        y=0.5),
+     main="b",
+     cex.names=0.0001,
+     col=hcl.colors(5, "Roma"), las=1)
+```
+
+We can also look at some additional aspects of the model, such as the goodness-of-fit with the original data,
+
+```{r}
+goodnessOfFit(we_2_cn_mod)
+```
+
+where we see that the residual errors are quite low, although it does not correlate as strongly as the model in Worked example 1.
+
+Like in Worked example 1, we can also look at the species-specific coefficients for the environmental predictors: as an example, for the natural re-vegetation treatment over time [@fig-2-coef], where we see that *Anthriscus sylvestris* has by far the largest coefficient.
+
+```{r}
+#| label: fig-2-coef
+#| fig-cap: "Variance partitiining of the latent variable model in worked example 2"
+#| fig-width: 5
+#| fig-height: 6
+coefplot(we_2_cn_mod, which.Xcoef = 4)
+```
+
+Another visualisation is a boxplot of the distribution of the random effects, both sample and species specific. We see for example that the sites in region 3 had an overall greater abundances of species.
+
 ```{r}
 #| echo: true
 #| eval: true
@@ -978,135 +1119,6 @@ ggplot() +
   scale_color_brewer(palette="Set2",
                      labels = c("Region 1", "Region 2", "Region 3", "Sites"))
 
-```
-
-Below is the code for predicting the site scores after 20 years:
-
-```{r}
-env_pred <- X
-add_t <- 20/(sqrt(var(env$years_since_n[env$years_since_n<40])))
-env_pred$natXtime <- ifelse(X$natXtime>0, X$natXtime+add_t, 0)
-env_pred$pnXtime <- ifelse(X$pnXtime>0, X$pnXtime+add_t, 0) 
-env_pred$seedXtime <- ifelse(X$seedXtime>0, X$seedXtime+add_t, 0)
-env_pred$gf <- env$gf # needed for prediction
-```
-
-```{r}
-#| echo: true
-#| eval: true
-#| label: fig-2-c
-#| fig-cap: "One-dimenstion ordination plot of the constrained ordination, with 20 years added to the time predictor. Equivalent to Figure 5c in the main manuscript."
-#| fig-width: 7
-#| fig-height: 4
-lv_scores <- scaled_cw_sites
-pars <- coef_scaled
-
-lv_scores[X$method=="nat",] = lv_scores[X$method=="nat",] + pars[4]*add_t
-lv_scores[X$method=="pn",] = lv_scores[X$method=="pn",] + pars[5]*add_t
-lv_scores[X$method=="seed",] = lv_scores[X$method=="seed",] + pars[6]*add_t
-
-# predict LV scores plot
-ggplot() + 
-  geom_point(aes(x=lv_scores[,1], y=0, color=X$method), 
-             position = position_jitter(w = 0, h = 0.1)) +
-  theme_classic() +
-  theme(axis.line.y = element_blank(), 
-        axis.ticks.y = element_blank(),
-        axis.text.y = element_blank(),
-        axis.line.x = element_line(),
-        legend.position = "bottom") +
-  labs(y="", x="Latent variable", color="Method", title = "c") +
-  scale_color_brewer(labels = c("Natural", "Planted-natural", 
-                                "Reference","Seeded"), 
-                     type="qual", palette = "Set1") +
-  ylim(-.2,.2)
-```
-
-We can also use the model to predict the future cover of specific species in the plots, using the code below, and visualising he future predictions for two potential indicator species [@fig-2-d].
-
-```{r}
-X$gf <- env_pred$gf # needed for prediction of baseline
-pred_scores_0 <- predict.gllvm(object = we_2_cn_mod, 
-                               type = "response")
-pred_scores_20 <- predict.gllvm(newX=env_pred, object = we_2_cn_mod, 
-                                type = "response")
-diffs <- as.data.frame(pred_scores_20-pred_scores_0) # calculate diff
-diffs$method <- env_pred$method
-diffs <- diffs |> filter(method != "ref") # remove reference sites from the data frame
-```
-
-```{r}
-#| echo: true
-#| eval: true
-#| label: fig-2-d
-#| fig-cap: "One-dimenstion ordination plot of the constrained ordination. Equivalent to Figure 5d in the main manuscript."
-#| fig-width: 7
-#| fig-height: 4
-
-p1 <- ggplot() +
-  geom_density(aes(x=diffs$festuca_rubra, fill = diffs$method, 
-                   color=diffs$method), alpha=0.5) +
-  labs(x="predicted cover change", y="number of plots", 
-       title = "Festuca rubra", fill="Method", color="Method") +
-  scale_fill_manual(labels = c("Natural", "Planted-natural", "Seeded"), 
-                    values = c("#E41A1C", "#377EB8", "#984EA3")) +
-  scale_color_manual(labels=c("Natural", "Planted-natural","Seeded"), 
-                     values = c("#E41A1C", "#377EB8", "#984EA3")) +
-  theme_classic()
-
-p2 <- ggplot() +
-  geom_density(aes(x=diffs$picea_abies, fill = diffs$method, 
-                   color=diffs$method), alpha=0.5) +
-  labs(x="predicted cover change", y="", title = "Picea abies", 
-       fill="Method", color="Method") +
-  scale_fill_manual(labels = c("Natural", "Planted-natural", "Seeded"), 
-                    values = c("#E41A1C", "#377EB8", "#984EA3")) +
-  scale_color_manual(labels=c("Natural", "Planted-natural", "Seeded"), 
-                     values = c("#E41A1C", "#377EB8", "#984EA3")) +
-  theme_classic()
-
-ggarrange(p1,p2, common.legend = T, legend = "bottom")
-```
-
-We can also look at some additional aspects of the model, such as the goodness-of-fit with the original data,
-
-```{r}
-goodnessOfFit(we_2_cn_mod)
-```
-
-where we see that the residual errors are quite low, although it does not correlate as strongly as the model in Worked example 1.
-
-Like in Worked example 1, we can also look at the species-specific coefficients for the environmental predictors: as an example, for the natural re-vegetation treatment over time [@fig-2-coef], where we see that *Anthriscus sylvestris* has by far the largest coefficient.
-
-```{r}
-#| label: fig-2-coef
-#| fig-cap: "Variance partitiining of the latent variable model in worked example 2"
-#| fig-width: 5
-#| fig-height: 6
-coefplot(we_2_cn_mod, which.Xcoef = 4)
-```
-
-We can also visualize the variance partitioning [@fig-2-vp], and note that the restoration treatment explain by far the most variance, followed by the species-specific effect of the study site and the community-wide random effect.
-
-```{r}
-#| label: fig-2-vp
-#| fig-cap: "Variance partitioning of the latent variable model in worked example 2"
-#| fig-width: 8
-#| fig-height: 7
-vp_we_2_cn_mod <- varPartitioning.gllvm(we_2_cn_mod,
-                                        group=rev(c(5,rep(4,5),rep(3,3),rep(2,3),rep(1,3))),
-                                        groupnames=c("Site RE (species-specific)", 
-                                                     "Rest. treatment",
-                                                     "Rest. treatment X time",
-                                                     "Other environmental predictors",
-                                                     "Plot RE"
-                                                     ))
-
-
-plot(vp_we_2_cn_mod, args.legend = list(cex=0.9),
-     main="b",
-     col=hcl.colors(5, "Roma"), las=2,
-     )
 ```
 
 # References

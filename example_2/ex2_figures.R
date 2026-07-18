@@ -102,14 +102,17 @@ vp_we_2_cn_mod <- varPartitioning.gllvm(we_2_cn_mod,
                                                      "Plot"))
 
 # sort by response to treatment
-vp_we_2_cn_mod$PropExplainedVarSp <- vp_we_2_cn_mod$PropExplainedVarSp[order(vp_we_2_cn_mod$PropExplainedVarSp[,1],
-                                                                             decreasing = T),]
+vp_we_2_cn_mod$PropExplainedVarSp <- vp_we_2_cn_mod$PropExplainedVarSp[order(vp_we_2_cn_mod$PropExplainedVarSp[,1], decreasing = T),]
 
 # plot
-b <- ggplotify::as.ggplot(~plot(vp_we_2_cn_mod, args.legend = list(cex=0.9),
-     main="b",
-     cex.names=0.0001,
-     col=hcl.colors(5, "Roma"), las=2))
+b <- ggplotify::as.ggplot(~plot(vp_we_2_cn_mod, 
+                                args.legend = list(cex=0.9,
+                                                   bg="white",
+                                                   x=60,
+                                                   y=0.5),
+                                main="b",
+                                cex.names=0.0001,
+                                col=hcl.colors(5, "Roma"), las=1))
 
 
 #### prediction ####
