@@ -243,7 +243,7 @@ for (n_lv in 1:3) { # run up to 3 LVs
       soil.C.N + soil.moisture, 
     num.lv.c = n_lv, # number of concurrent LVs
     trace = F,
-    seed = 123,
+    seed = 4542316,
     n.init = 5,
     Power = NULL
   )
@@ -1026,7 +1026,7 @@ We can also use the model to predict the future cover of specific species in the
 
 ```{r}
 X$gf <- env_pred$gf # needed for prediction of baseline
-pred_scores_0 <- predict.gllvm(newX=X, object = we_2_cn_mod, 
+pred_scores_0 <- predict.gllvm(object = we_2_cn_mod, 
                                type = "response")
 pred_scores_20 <- predict.gllvm(newX=env_pred, object = we_2_cn_mod, 
                                 type = "response")
