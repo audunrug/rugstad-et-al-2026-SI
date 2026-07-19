@@ -447,7 +447,7 @@ goodnessOfFit(object=we_1_uc_mod)
 
 ### Concurrent latent variable model
 
-Below is the model summary of the concurrent ordination model with two concurrent latent variables. we see that the parameter estimates for the effects of soil moisture and soil nitrogen content on latent variable 1 are the only latent variable predictors significant at a 95% confidence level.
+Below is the model summary of the concurrent ordination model with two concurrent latent variables. we see that the parameter estimates for the effects of soil moisture and soil nitrogen content on latent variable 1 are the only canonical coefficients significant at a 95% confidence level.
 
 ```{r}
 # extract the model for visualization
@@ -502,7 +502,7 @@ plot(vp_we_1_cc_mod, args.legend = list(cex=0.7),
 
 ```{r}
 #| label: fig-1-cor3
-#| fig-cap: "Residual between-species correlation from the concurrent ordination (after accounting for the latent variable predictors."
+#| fig-cap: "Residual between-species correlation from the concurrent ordination (after accounting for the canonical coefficients."
 #| fig-width: 7
 #| fig-height: 5
 
@@ -529,7 +529,7 @@ species <- species_sub1 # overwrite old species data frame
 load("example_2/data/environmental_variables.rda")
 ```
 
-Looking at the environmental data, we see that the variable `gf` (region) is coded with "ref" as its own category, for each reference plot within a `site`, regardless of which `gf` cateogry the other plots within that site belongs to. We change that to make sure that each site has exactly one `gf` category:
+Looking at the environmental data, we see that the variable `gf` (region) is coded with "ref" as its own category, for each reference plot within a `site`, regardless of which `gf` category the other plots within that site belongs to. We change that to make sure that each site has exactly one `gf` category:
 
 ```{r}
 env <- env.var_sub1
