@@ -5,10 +5,10 @@ editor: visual
 fig-format: png
 date: today
 crossref: 
-  fig-title: "Supplementary Figure 1."
-  fig-prefix: "Sup. Figure 1."
-  tbl-title: "Supplementary Table 1."
-  tbl-prefix: "Sup. Table 1."
+  fig-title: "S1.T"
+  fig-prefix: "S1.T"
+  tbl-title: "S1.T"
+  tbl-prefix: "S1.T"
   chapters: true
 bibliography: references.bib
 ---
